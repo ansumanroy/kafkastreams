@@ -1,0 +1,11 @@
+{
+  "ingestTopic": "Ingest",
+  "dlqTopic": "Ingest-dlq",
+  "targetField": "target",
+  "routes": {
+    "ACDW": "ACDW",
+    "MULESOFT": "MULESOFT",
+    "GDW": "GDW",
+    "SIEBEL": "SIEBEL"
+  }
+}

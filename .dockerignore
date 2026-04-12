@@ -1,0 +1,8 @@
+.git
+**/target
+**/.idea
+*.iml
+k8s
+kind-config.yaml
+README.md
+Makefile

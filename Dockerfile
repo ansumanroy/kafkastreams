@@ -1,0 +1,12 @@
+FROM maven:3.9.9-eclipse-temurin-17 AS build
+WORKDIR /build
+COPY streams-router/pom.xml .
+COPY streams-router/src ./src
+RUN mvn -B -q package -DskipTests
+
+FROM eclipse-temurin:17-jre-jammy
+RUN groupadd --system --gid 1000 app && useradd --system --uid 1000 --gid app app
+WORKDIR /app
+COPY --from=build /build/target/ingest-router-1.0.0-SNAPSHOT.jar /app/app.jar
+USER app
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

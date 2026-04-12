@@ -1,0 +1,71 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: topic-ingest
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kind-kafka
+spec:
+  topicName: Ingest
+  partitions: 3
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: topic-acdw
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kind-kafka
+spec:
+  topicName: ACDW
+  partitions: 3
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: topic-mulesoft
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kind-kafka
+spec:
+  topicName: MULESOFT
+  partitions: 3
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: topic-gdw
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kind-kafka
+spec:
+  topicName: GDW
+  partitions: 3
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: topic-siebel
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kind-kafka
+spec:
+  topicName: SIEBEL
+  partitions: 3
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: topic-ingest-dlq
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kind-kafka
+spec:
+  topicName: Ingest-dlq
+  partitions: 1
+  replicas: 1
