@@ -1,5 +1,8 @@
 package com.example.ingestrouter;
 
+import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.common.config.SaslConfigs;
+import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -40,6 +43,8 @@ public final class IngestRouterApp {
     props.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.AT_LEAST_ONCE);
     props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, envOrDefault("NUM_STREAM_THREADS", "1"));
 
+    applyKafkaSecurityFromEnv(props);
+
     StreamsBuilder builder = new StreamsBuilder();
     KStream<String, String> ingest =
         builder.stream(ingestTopic, Consumed.with(Serdes.String(), Serdes.String()));
@@ -79,6 +84,77 @@ public final class IngestRouterApp {
         dlqTopic,
         bootstrap);
     streams.start();
+  }
+
+  /**
+   * When {@code KAFKA_SECURITY_PROTOCOL} is set (e.g. {@code SASL_SSL} for MSK), applies client security
+   * settings. Plaintext Kind/dev is unchanged when the variable is unset or blank.
+   */
+  static void applyKafkaSecurityFromEnv(Properties props) {
+    String protocol = trimToNull(System.getenv("KAFKA_SECURITY_PROTOCOL"));
+    if (protocol == null) {
+      return;
+    }
+
+    props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, protocol);
+    props.put(StreamsConfig.SECURITY_PROTOCOL_CONFIG, protocol);
+
+    String truststorePath = trimToNull(System.getenv("SSL_TRUSTSTORE_LOCATION"));
+    if (truststorePath != null) {
+      props.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, truststorePath);
+      String truststorePassword = trimToNull(System.getenv("SSL_TRUSTSTORE_PASSWORD"));
+      if (truststorePassword != null) {
+        props.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, truststorePassword);
+      }
+    }
+
+    if (!protocol.toUpperCase().contains("SASL")) {
+      log.info("Kafka security: protocol={}", protocol);
+      return;
+    }
+
+    String mechanism = trimToNull(System.getenv("KAFKA_SASL_MECHANISM"));
+    if (mechanism == null) {
+      mechanism = "SCRAM-SHA-512";
+    }
+
+    String jaas = trimToNull(System.getenv("KAFKA_SASL_JAAS_CONFIG"));
+    if (jaas == null) {
+      String username = trimToNull(System.getenv("KAFKA_SASL_USERNAME"));
+      String password = System.getenv("KAFKA_SASL_PASSWORD");
+      if (username == null || password == null) {
+        throw new IllegalStateException(
+            "SASL security.protocol is set; set KAFKA_SASL_JAAS_CONFIG or both KAFKA_SASL_USERNAME and KAFKA_SASL_PASSWORD");
+      }
+      jaas = scramShaJaasConfig(username, password);
+    }
+
+    props.put(SaslConfigs.SASL_MECHANISM, mechanism);
+    props.put(SaslConfigs.SASL_JAAS_CONFIG, jaas);
+
+    log.info("Kafka security: protocol={}, sasl.mechanism={}", protocol, mechanism);
+  }
+
+  static String scramShaJaasConfig(String username, String password) {
+    return "org.apache.kafka.common.security.scram.ScramLoginModule required username=\""
+        + escapeForJaasQuotedValue(username)
+        + "\" password=\""
+        + escapeForJaasQuotedValue(password)
+        + "\";";
+  }
+
+  static String escapeForJaasQuotedValue(String value) {
+    if (value == null) {
+      return "";
+    }
+    return value.replace("\\", "\\\\").replace("\"", "\\\"");
+  }
+
+  private static String trimToNull(String v) {
+    if (v == null || v.isBlank()) {
+      return null;
+    }
+    return v.trim();
   }
 
   private static String requiredEnv(String name) {

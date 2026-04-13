@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingest-router-msk-config
+  namespace: ingest-router-msk
+  labels:
+    app: ingest-router-msk
+data:
+  config.json: |
+    {
+      "ingestTopic": "Ingest",
+      "dlqTopic": "Ingest-dlq",
+      "targetField": "target",
+      "routes": {
+        "ACDW": "ACDW",
+        "MULESOFT": "MULESOFT",
+        "GDW": "GDW",
+        "SIEBEL": "SIEBEL"
+      }
+    }

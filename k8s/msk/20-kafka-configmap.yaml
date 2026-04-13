@@ -1,0 +1,12 @@
+# Non-secret MSK client settings. Replace bootstrap.servers with your cluster SASL_SSL
+# bootstrap string (comma-separated, typically port 9096).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingest-router-msk-kafka
+  namespace: ingest-router-msk
+  labels:
+    app: ingest-router-msk
+data:
+  bootstrap.servers: "b-1.public-msk-example.kafka.us-east-1.amazonaws.com:9096,b-2.public-msk-example.kafka.us-east-1.amazonaws.com:9096"
+  sasl.mechanism: "SCRAM-SHA-512"

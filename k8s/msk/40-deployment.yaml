@@ -1,0 +1,66 @@
+# MSK-facing ingest router. Replace the image with your ECR (or other registry) URI
+# after building and pushing the same image used for Kind (see repo Dockerfile).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingest-router-msk
+  namespace: ingest-router-msk
+  labels:
+    app: ingest-router-msk
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingest-router-msk
+  template:
+    metadata:
+      labels:
+        app: ingest-router-msk
+    spec:
+      containers:
+        - name: ingest-router
+          image: 012345678901.dkr.ecr.us-east-1.amazonaws.com/ingest-router:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: ingest-router-msk-kafka
+                  key: bootstrap.servers
+            - name: KAFKA_SECURITY_PROTOCOL
+              value: SASL_SSL
+            - name: KAFKA_SASL_MECHANISM
+              valueFrom:
+                configMapKeyRef:
+                  name: ingest-router-msk-kafka
+                  key: sasl.mechanism
+            - name: KAFKA_SASL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: ingest-router-msk-sasl
+                  key: KAFKA_SASL_USERNAME
+            - name: KAFKA_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ingest-router-msk-sasl
+                  key: KAFKA_SASL_PASSWORD
+            - name: APPLICATION_ID
+              value: ingest-router-msk
+            - name: ROUTER_CONFIG_PATH
+              value: /etc/router/config.json
+          volumeMounts:
+            - name: router-config
+              mountPath: /etc/router/config.json
+              subPath: config.json
+              readOnly: true
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: "250m"
+            limits:
+              memory: 1Gi
+              cpu: "1"
+      volumes:
+        - name: router-config
+          configMap:
+            name: ingest-router-msk-config
