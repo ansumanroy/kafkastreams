@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ksqldb-server
+  namespace: ingest-router-ksqldb
+  labels:
+    app: ksqldb-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ksqldb-server
+  template:
+    metadata:
+      labels:
+        app: ksqldb-server
+    spec:
+      containers:
+        - name: ksqldb-server
+          image: confluentinc/ksqldb-server:0.29.0
+          ports:
+            - containerPort: 8088
+              name: http
+          envFrom:
+            - configMapRef:
+                name: ksqldb-server-config
+            - secretRef:
+                name: ksqldb-server-secrets
+          env:
+            - name: KSQL_KSQL_STREAMS_SECURITY_PROTOCOL
+              valueFrom:
+                configMapKeyRef:
+                  name: ksqldb-server-config
+                  key: KSQL_SECURITY_PROTOCOL
+            - name: KSQL_KSQL_STREAMS_SASL_MECHANISM
+              valueFrom:
+                configMapKeyRef:
+                  name: ksqldb-server-config
+                  key: KSQL_SASL_MECHANISM
+            - name: KSQL_KSQL_STREAMS_SASL_JAAS_CONFIG
+              valueFrom:
+                secretKeyRef:
+                  name: ksqldb-server-secrets
+                  key: KSQL_SASL_JAAS_CONFIG
+          readinessProbe:
+            httpGet:
+              path: /info
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /info
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "250m"
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi

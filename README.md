@@ -88,6 +88,75 @@ kubectl rollout restart deployment/ingest-router -n ingest-router
 
 Local runs (outside Kubernetes): point `ROUTER_CONFIG_PATH` at a file such as [`k8s/app/router-config.json`](k8s/app/router-config.json).
 
+## Optional: Parallel ksqlDB router on MSK (separate namespace)
+
+This repository also includes an **additive** ksqlDB implementation under [`ksql/`](ksql/) and [`k8s/ksqldb/`](k8s/ksqldb/). It does **not** replace the Java router in [`streams-router/`](streams-router/); run it in a separate environment/namespace.
+
+### 1) Prepare namespace and ksqlDB manifests
+
+```bash
+kubectl apply -f k8s/ksqldb/00-namespace.yaml
+kubectl apply -f k8s/ksqldb/10-ksqldb-configmap.yaml
+```
+
+Create a real Secret from the example (do not commit real credentials):
+
+```bash
+cp k8s/ksqldb/20-ksqldb-secret.example.yaml /tmp/20-ksqldb-secret.yaml
+# edit /tmp/20-ksqldb-secret.yaml with real SCRAM credentials
+kubectl apply -f /tmp/20-ksqldb-secret.yaml
+```
+
+Deploy ksqlDB:
+
+```bash
+kubectl apply -f k8s/ksqldb/30-deployment.yaml
+kubectl apply -f k8s/ksqldb/40-service.yaml
+```
+
+Before applying, update `KSQL_BOOTSTRAP_SERVERS` in [`k8s/ksqldb/10-ksqldb-configmap.yaml`](k8s/ksqldb/10-ksqldb-configmap.yaml) with your MSK SASL_SSL brokers (typically `:9096`).
+
+### 2) Apply routing SQL
+
+Port-forward the ksqlDB API:
+
+```bash
+kubectl -n ingest-router-ksqldb port-forward svc/ksqldb-server 8088:8088
+```
+
+In another terminal, run the statements in order:
+
+```bash
+python3 - <<'PY'
+import json
+import pathlib
+import urllib.request
+
+url = "http://localhost:8088/ksql"
+headers = {"Content-Type": "application/vnd.ksql.v1+json; charset=utf-8"}
+
+for file_name in ["ksql/01-streams.sql", "ksql/02-routing.sql", "ksql/03-dlq.sql"]:
+    ksql = pathlib.Path(file_name).read_text()
+    payload = json.dumps({"ksql": ksql, "streamsProperties": {}}).encode()
+    req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
+    with urllib.request.urlopen(req) as resp:
+        print(f"{file_name}: HTTP {resp.status}")
+PY
+```
+
+### 3) Verify behavior
+
+- Valid payloads route by `target` to topics `ACDW`, `MULESOFT`, `GDW`, `SIEBEL`.
+- Unknown, blank, missing `target`, and malformed JSON route to `Ingest-dlq`.
+- Check ksqlDB query status:
+
+```bash
+curl -sS http://localhost:8088/info
+curl -sS -X POST http://localhost:8088/ksql \
+  -H "Content-Type: application/vnd.ksql.v1+json; charset=utf-8" \
+  --data '{"ksql":"SHOW QUERIES;","streamsProperties":{}}'
+```
+
 ## Troubleshooting
 
 **`make kafka-wait` reports `kafkas.kafka.strimzi.io "kind-kafka" not found`**
@@ -124,3 +193,6 @@ Upgrading Kind or Docker Desktop may restore native `kind load`; the pipe fallba
 - [`streams-router/`](streams-router/) — Java 17 Maven app
 - [`Dockerfile`](Dockerfile) — multi-stage build for the router
 - [`k8s/app/`](k8s/app/) — router `Deployment`, ConfigMap, sample [`router-config.json`](k8s/app/router-config.json)
+- [`k8s/msk/`](k8s/msk/) — MSK-focused Java router manifests (SASL/SCRAM env-based)
+- [`k8s/ksqldb/`](k8s/ksqldb/) — dedicated namespace + ksqlDB server manifests for MSK
+- [`ksql/`](ksql/) — persistent query SQL files (source stream, routing, DLQ)

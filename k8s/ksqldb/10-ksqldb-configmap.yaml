@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ksqldb-server-config
+  namespace: ingest-router-ksqldb
+  labels:
+    app: ksqldb-server
+data:
+  # Replace with your MSK SASL_SSL bootstrap endpoints.
+  KSQL_BOOTSTRAP_SERVERS: "b-1.public-msk-example.kafka.us-east-1.amazonaws.com:9096,b-2.public-msk-example.kafka.us-east-1.amazonaws.com:9096"
+  # Unique service id for ksqlDB internal topics.
+  KSQL_KSQL_SERVICE_ID: "ingest-router-ksqldb_"
+  KSQL_LISTENERS: "http://0.0.0.0:8088"
+  KSQL_SECURITY_PROTOCOL: "SASL_SSL"
+  KSQL_SASL_MECHANISM: "SCRAM-SHA-512"
