@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 
 public final class IngestRouterApp {
@@ -39,6 +40,7 @@ public final class IngestRouterApp {
     props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
     props.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.AT_LEAST_ONCE);
     props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, envOrDefault("NUM_STREAM_THREADS", "1"));
+    configureOptionalKafkaSecurity(props);
 
     StreamsBuilder builder = new StreamsBuilder();
     KStream<String, String> ingest =
@@ -92,5 +94,44 @@ public final class IngestRouterApp {
   private static String envOrDefault(String name, String def) {
     String v = System.getenv(name);
     return (v == null || v.isBlank()) ? def : v.trim();
+  }
+
+  private static Optional<String> optionalEnv(String name) {
+    String v = System.getenv(name);
+    if (v == null || v.isBlank()) {
+      return Optional.empty();
+    }
+    return Optional.of(v.trim());
+  }
+
+  private static void configureOptionalKafkaSecurity(Properties props) {
+    Optional<String> securityProtocol = optionalEnv("KAFKA_SECURITY_PROTOCOL");
+    Optional<String> saslMechanism = optionalEnv("KAFKA_SASL_MECHANISM");
+    Optional<String> saslUsername = optionalEnv("KAFKA_SASL_USERNAME");
+    Optional<String> saslPassword = optionalEnv("KAFKA_SASL_PASSWORD");
+
+    securityProtocol.ifPresent(value -> props.put("security.protocol", value));
+    saslMechanism.ifPresent(value -> props.put("sasl.mechanism", value));
+
+    if (saslUsername.isPresent() || saslPassword.isPresent()) {
+      if (saslUsername.isEmpty() || saslPassword.isEmpty()) {
+        throw new IllegalStateException(
+            "KAFKA_SASL_USERNAME and KAFKA_SASL_PASSWORD must both be set when using SASL");
+      }
+      if (saslMechanism.isEmpty()) {
+        throw new IllegalStateException("KAFKA_SASL_MECHANISM is required when SASL credentials are set");
+      }
+      props.put(
+          "sasl.jaas.config",
+          "org.apache.kafka.common.security.scram.ScramLoginModule required username=\""
+              + escapeForJaas(saslUsername.get())
+              + "\" password=\""
+              + escapeForJaas(saslPassword.get())
+              + "\";");
+    }
+  }
+
+  private static String escapeForJaas(String value) {
+    return value.replace("\\", "\\\\").replace("\"", "\\\"");
   }
 }

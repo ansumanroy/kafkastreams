@@ -2,6 +2,10 @@
 
 Apache Kafka runs on Kubernetes in **KRaft** mode via [Strimzi](https://strimzi.io/) **0.48.0**. A small **Kafka Streams** app reads routing rules from a **JSON file** (ConfigMap): ingest topic, DLQ topic, the JSON field used as the routing key (default `target`), and a map from that field’s value to a **Kafka topic name**. Example: `"target":"ACDW"` routes to topic **`ACDW`** when the config lists that key. Unknown keys, invalid JSON, or invalid topic names in config go to the configured DLQ.
 
+The same router binary now supports both:
+- local in-cluster Kafka (Strimzi plaintext) via `k8s/app/`
+- Amazon MSK with SASL/SCRAM via `k8s/msk-app/`
+
 ## Prerequisites
 
 - [kind](https://kind.sigs.k8s.io/) (some Docker Desktop setups still break `kind load`; `make deploy-router` falls back to `docker save | ctr import -`)
@@ -29,7 +33,7 @@ This installs the operator into namespace **`kafka`** (override with `STRIMZI_NA
 
 The Strimzi release YAML hard-codes ServiceAccount subjects as `namespace: myproject`. `make strimzi-install` rewrites those lines to your target namespace before `kubectl apply`, then restarts the operator so leader election and reconciliation work.
 
-## 3. Build and deploy the Kafka Streams router
+## 3. Build and deploy the Kafka Streams router (local Strimzi)
 
 ```bash
 make deploy-router
@@ -39,7 +43,27 @@ This builds image `ingest-router:local`, loads it into Kind, and applies [`k8s/a
 
 Equivalent one-shot script: [`scripts/deploy.sh`](scripts/deploy.sh) (honours `CLUSTER_NAME` and `IMAGE`).
 
-## 4. Smoke test
+## 4. Deploy a separate MSK router app (SASL/SCRAM)
+
+MSK deployment manifests live in [`k8s/msk-app/`](k8s/msk-app/), in a separate namespace (`ingest-router-msk`) so you can run and observe it independently from the local router.
+
+Before deploying, update:
+- [`k8s/msk-app/05-msk-bootstrap-configmap.yaml`](k8s/msk-app/05-msk-bootstrap-configmap.yaml): `BOOTSTRAP_SERVERS` to your MSK broker list (comma-separated host:port).
+- [`k8s/msk-app/secrets.yaml`](k8s/msk-app/secrets.yaml): SCRAM `username` and `password` (placeholders only in git; use a real Secret source in production if you prefer not to commit credentials).
+
+Deploy:
+
+```bash
+make deploy-router-msk
+```
+
+This applies [`k8s/msk-app/05-msk-bootstrap-configmap.yaml`](k8s/msk-app/05-msk-bootstrap-configmap.yaml), [`k8s/msk-app/secrets.yaml`](k8s/msk-app/secrets.yaml), [`k8s/msk-app/10-router-configmap.yaml`](k8s/msk-app/10-router-configmap.yaml), and [`k8s/msk-app/deployment.yaml`](k8s/msk-app/deployment.yaml), and configures Kafka client auth with:
+- `KAFKA_SECURITY_PROTOCOL=SASL_SSL`
+- `KAFKA_SASL_MECHANISM=SCRAM-SHA-512`
+- `BOOTSTRAP_SERVERS` from ConfigMap `msk-bootstrap`
+- `KAFKA_SASL_USERNAME`/`KAFKA_SASL_PASSWORD` from Secret `msk-scram-credentials`
+
+## 5. Smoke test
 
 Print copy-paste commands:
 
@@ -85,8 +109,16 @@ kubectl rollout restart deployment/ingest-router -n ingest-router
 | `APPLICATION_ID` | Kafka Streams application id |
 | `ROUTER_CONFIG_PATH` | Path to JSON file inside the container (default `/etc/router/config.json`) |
 | `NUM_STREAM_THREADS` | Optional Streams threads (default `1`) |
+| `KAFKA_SECURITY_PROTOCOL` | Optional Kafka client protocol (for MSK set `SASL_SSL`) |
+| `KAFKA_SASL_MECHANISM` | Optional SASL mechanism (for MSK SCRAM set `SCRAM-SHA-512`) |
+| `KAFKA_SASL_USERNAME` | Optional SASL username (must be set together with password) |
+| `KAFKA_SASL_PASSWORD` | Optional SASL password (must be set together with username) |
 
 Local runs (outside Kubernetes): point `ROUTER_CONFIG_PATH` at a file such as [`k8s/app/router-config.json`](k8s/app/router-config.json).
+
+For the separate MSK app:
+- Bootstrap brokers: ConfigMap [`k8s/msk-app/05-msk-bootstrap-configmap.yaml`](k8s/msk-app/05-msk-bootstrap-configmap.yaml) (`msk-bootstrap`, key `BOOTSTRAP_SERVERS`)
+- SCRAM credentials: Secret [`k8s/msk-app/secrets.yaml`](k8s/msk-app/secrets.yaml) (`msk-scram-credentials`, keys `username`, `password`)
 
 ## Troubleshooting
 
@@ -123,4 +155,5 @@ Upgrading Kind or Docker Desktop may restore native `kind load`; the pipe fallba
 - [`k8s/strimzi/`](k8s/strimzi/) — namespace, KRaft `Kafka` + `KafkaNodePool`, `KafkaTopic` resources
 - [`streams-router/`](streams-router/) — Java 17 Maven app
 - [`Dockerfile`](Dockerfile) — multi-stage build for the router
-- [`k8s/app/`](k8s/app/) — router `Deployment`, ConfigMap, sample [`router-config.json`](k8s/app/router-config.json)
+- [`k8s/app/`](k8s/app/) — local Strimzi router `Deployment`, ConfigMap, sample [`router-config.json`](k8s/app/router-config.json)
+- [`k8s/msk-app/`](k8s/msk-app/) — separate MSK router `Deployment` with SASL/SCRAM env wiring

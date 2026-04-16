@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingest-router
+  namespace: ingest-router-msk
+  labels:
+    app: ingest-router
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingest-router
+  template:
+    metadata:
+      labels:
+        app: ingest-router
+    spec:
+      containers:
+        - name: ingest-router
+          image: ingest-router:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: msk-bootstrap
+                  key: BOOTSTRAP_SERVERS
+            - name: APPLICATION_ID
+              value: ingest-router-msk
+            - name: ROUTER_CONFIG_PATH
+              value: /etc/router/config.json
+            - name: KAFKA_SECURITY_PROTOCOL
+              value: SASL_SSL
+            - name: KAFKA_SASL_MECHANISM
+              value: SCRAM-SHA-512
+            - name: KAFKA_SASL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: msk-scram-credentials
+                  key: username
+            - name: KAFKA_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: msk-scram-credentials
+                  key: password
+          volumeMounts:
+            - name: router-config
+              mountPath: /etc/router/config.json
+              subPath: config.json
+              readOnly: true
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: "250m"
+            limits:
+              memory: 1Gi
+              cpu: "1"
+      volumes:
+        - name: router-config
+          configMap:
+            name: ingest-router-config

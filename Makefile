@@ -4,7 +4,7 @@ KAFKA_IMAGE       := quay.io/strimzi/kafka:$(STRIMZI_VERSION)-kafka-4.1.0
 CLUSTER_NAME      ?= kind
 IMAGE             ?= ingest-router:local
 
-.PHONY: strimzi-install kafka-apply kafka-wait docker-build kind-load kind-load-ctr app-apply app-wait deploy-router smoke-producer-help
+.PHONY: strimzi-install kafka-apply kafka-wait docker-build kind-load kind-load-ctr app-apply app-wait deploy-router msk-app-apply msk-app-wait deploy-router-msk smoke-producer-help
 
 # Upstream YAML uses "namespace: myproject" on ServiceAccount subjects in RoleBindings.
 # kubectl -n kafka does not rewrite those; leader election then 403s on leases. Rewrite subjects to match STRIMZI_NAMESPACE.
@@ -49,6 +49,19 @@ app-wait:
 
 # Build image, load into Kind, apply router Deployment (Kafka must already be Ready).
 deploy-router: docker-build kind-load app-apply app-wait
+
+msk-app-apply:
+	kubectl apply -f k8s/msk-app/00-namespace.yaml
+	kubectl apply -f k8s/msk-app/05-msk-bootstrap-configmap.yaml
+	kubectl apply -f k8s/msk-app/secrets.yaml
+	kubectl apply -f k8s/msk-app/10-router-configmap.yaml
+	kubectl apply -f k8s/msk-app/deployment.yaml
+
+msk-app-wait:
+	kubectl wait deployment/ingest-router -n ingest-router-msk --for=condition=Available --timeout=180s
+
+# Build image, load into Kind, apply MSK router Deployment.
+deploy-router-msk: docker-build kind-load msk-app-apply msk-app-wait
 
 smoke-producer-help:
 	@echo "Producer (interactive paste JSON), same namespace as Kafka:"
