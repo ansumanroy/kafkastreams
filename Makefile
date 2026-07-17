@@ -3,8 +3,24 @@ STRIMZI_NAMESPACE ?= kafka
 KAFKA_IMAGE       := quay.io/strimzi/kafka:$(STRIMZI_VERSION)-kafka-4.1.0
 CLUSTER_NAME      ?= kind
 IMAGE             ?= ingest-router:local
+STREAMS_ROUTER_DIR := streams-router
+MVN               ?= mvn
+GRADLE            ?= gradle
 
-.PHONY: strimzi-install kafka-apply kafka-wait docker-build kind-load kind-load-ctr app-apply app-wait deploy-router msk-app-apply msk-app-wait deploy-router-msk smoke-producer-help
+.PHONY: build build-maven build-gradle docker-build strimzi-install kafka-apply kafka-wait kind-load kind-load-ctr app-apply app-wait deploy-router msk-app-apply msk-app-wait deploy-router-msk smoke-producer-help
+
+# Default local Java build uses Maven (matches the Dockerfile).
+build: build-maven
+
+build-maven:
+	$(MVN) -B -f $(STREAMS_ROUTER_DIR)/pom.xml package -DskipTests
+
+build-gradle:
+	cd $(STREAMS_ROUTER_DIR) && $(GRADLE) build -x test
+
+# Multi-stage image: Maven package inside the build stage, JRE runtime.
+docker-build:
+	docker build -t $(IMAGE) .
 
 # Upstream YAML uses "namespace: myproject" on ServiceAccount subjects in RoleBindings.
 # kubectl -n kafka does not rewrite those; leader election then 403s on leases. Rewrite subjects to match STRIMZI_NAMESPACE.
@@ -23,9 +39,6 @@ kafka-apply:
 
 kafka-wait:
 	kubectl wait kafka/kind-kafka -n $(STRIMZI_NAMESPACE) --for=condition=Ready --timeout=600s
-
-docker-build:
-	docker build -t $(IMAGE) .
 
 # kind load can fail on some Docker Desktop + node combos ("failed to detect containerd snapshotter").
 # Fallback: stream image tar into ctr import stdin (docker cp to /tmp is unreliable inside kindest/node).
