@@ -1,0 +1,11 @@
+{{- if .Values.kafka.auth.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.kafka.auth.bootstrapConfigMapName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "header-router.labels" . | nindent 4 }}
+data:
+  BOOTSTRAP_SERVERS: {{ .Values.bootstrapServers | quote }}
+{{- end }}

@@ -1,0 +1,55 @@
+nameOverride: ""
+fullnameNameOverride: ""
+
+clusterName: kind-kafka
+nodePoolName: dual-role
+
+kafka:
+  version: "4.1.0"
+  metadataVersion: "4.1-IV1"
+  replicas: 1
+  jvmOptions:
+    "-Xms": 256m
+    "-Xmx": 1536m
+  resources:
+    requests:
+      memory: 2Gi
+      cpu: "500m"
+    limits:
+      memory: 3Gi
+      cpu: "2"
+  storage:
+    type: ephemeral
+  config:
+    offsets.topic.replication.factor: 1
+    transaction.state.log.replication.factor: 1
+    transaction.state.log.min.isr: 1
+    default.replication.factor: 1
+    min.insync.replicas: 1
+    auto.create.topics.enable: "false"
+
+topics:
+  - name: topic-ingest
+    topicName: Ingest
+    partitions: 3
+    replicas: 1
+  - name: topic-acdw
+    topicName: ACDW
+    partitions: 3
+    replicas: 1
+  - name: topic-mulesoft
+    topicName: MULESOFT
+    partitions: 3
+    replicas: 1
+  - name: topic-gdw
+    topicName: GDW
+    partitions: 3
+    replicas: 1
+  - name: topic-siebel
+    topicName: SIEBEL
+    partitions: 3
+    replicas: 1
+  - name: topic-ingest-dlq
+    topicName: Ingest-dlq
+    partitions: 1
+    replicas: 1

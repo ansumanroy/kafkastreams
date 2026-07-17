@@ -1,0 +1,4 @@
+1. Strimzi Kafka cluster "{{ .Values.clusterName }}" installed in {{ .Release.Namespace }}.
+2. Requires the Strimzi cluster operator (make strimzi-install) before this chart.
+3. Wait for Ready: kubectl wait kafka/{{ .Values.clusterName }} -n {{ .Release.Namespace }} --for=condition=Ready --timeout=600s
+4. Topics: {{ range .Values.topics }}{{ .topicName }} {{ end }}

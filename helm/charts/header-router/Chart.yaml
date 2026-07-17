@@ -1,0 +1,6 @@
+apiVersion: v2
+name: header-router
+description: Kafka Streams header router (record header routing)
+type: application
+version: 0.1.0
+appVersion: "1.0.0-SNAPSHOT"

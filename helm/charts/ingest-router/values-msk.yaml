@@ -1,0 +1,12 @@
+# Overlay for Amazon MSK (SASL/SCRAM).
+# Usage: helm upgrade --install ... -f values-msk.yaml -n ingest-router-msk
+applicationId: ingest-router-msk
+bootstrapServers: "b-1.example.abcd.kafka.us-east-1.amazonaws.com:9096,b-2.example.abcd.kafka.us-east-1.amazonaws.com:9096"
+
+kafka:
+  auth:
+    enabled: true
+    securityProtocol: SASL_SSL
+    saslMechanism: SCRAM-SHA-512
+    username: "<replace-with-msk-scram-username>"
+    password: "<replace-with-msk-scram-password>"

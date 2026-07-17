@@ -161,3 +161,4 @@ Upgrading Kind or Docker Desktop may restore native `kind load`; the pipe fallba
 - [`k8s/msk-app/`](k8s/msk-app/) — separate MSK router `Deployment` with SASL/SCRAM env wiring
 - [`k8s/header-app/`](k8s/header-app/) — local Strimzi header-router `Deployment` and ConfigMap
 - [`k8s/header-msk-app/`](k8s/header-msk-app/) — MSK header-router `Deployment` with SASL/SCRAM env wiring
+- [`helm/charts/`](helm/charts/) — Helm charts for Strimzi Kafka, ingest-router, and header-router (see [`helm/README.md`](helm/README.md))

@@ -9,6 +9,8 @@ STREAMS_HEADER_ROUTER_DIR := streams-header-router
 MVN               ?= mvn
 GRADLE            ?= gradle
 
+HELM_CHARTS_DIR := helm/charts
+
 .PHONY: build build-maven build-gradle docker-build \
 	build-header build-header-maven build-header-gradle docker-build-header \
 	strimzi-install kafka-apply kafka-wait kind-load kind-load-ctr \
@@ -16,6 +18,11 @@ GRADLE            ?= gradle
 	msk-app-apply msk-app-wait deploy-router-msk \
 	header-app-apply header-app-wait deploy-header-router \
 	header-msk-app-apply header-msk-app-wait deploy-header-router-msk \
+	helm-install-kafka helm-uninstall-kafka \
+	helm-install-router helm-uninstall-router \
+	helm-install-router-msk helm-uninstall-router-msk \
+	helm-install-header-router helm-uninstall-header-router \
+	helm-install-header-router-msk helm-uninstall-header-router-msk \
 	smoke-producer-help smoke-header-help
 
 # Default local Java build uses Maven (matches the Dockerfile).
@@ -123,6 +130,44 @@ header-msk-app-wait:
 deploy-header-router-msk: docker-build-header
 	$(MAKE) kind-load IMAGE=$(HEADER_IMAGE)
 	$(MAKE) header-msk-app-apply header-msk-app-wait
+
+# Helm parallel install path (raw k8s/ kubectl apply targets remain available).
+helm-install-kafka:
+	helm upgrade --install strimzi-kafka $(HELM_CHARTS_DIR)/strimzi-kafka \
+		-n $(STRIMZI_NAMESPACE) --create-namespace
+
+helm-uninstall-kafka:
+	helm uninstall strimzi-kafka -n $(STRIMZI_NAMESPACE) --ignore-not-found
+
+helm-install-router:
+	helm upgrade --install ingest-router $(HELM_CHARTS_DIR)/ingest-router \
+		-n ingest-router --create-namespace
+
+helm-uninstall-router:
+	helm uninstall ingest-router -n ingest-router --ignore-not-found
+
+helm-install-router-msk:
+	helm upgrade --install ingest-router-msk $(HELM_CHARTS_DIR)/ingest-router \
+		-n ingest-router-msk --create-namespace \
+		-f $(HELM_CHARTS_DIR)/ingest-router/values-msk.yaml
+
+helm-uninstall-router-msk:
+	helm uninstall ingest-router-msk -n ingest-router-msk --ignore-not-found
+
+helm-install-header-router:
+	helm upgrade --install header-router $(HELM_CHARTS_DIR)/header-router \
+		-n header-router --create-namespace
+
+helm-uninstall-header-router:
+	helm uninstall header-router -n header-router --ignore-not-found
+
+helm-install-header-router-msk:
+	helm upgrade --install header-router-msk $(HELM_CHARTS_DIR)/header-router \
+		-n header-router-msk --create-namespace \
+		-f $(HELM_CHARTS_DIR)/header-router/values-msk.yaml
+
+helm-uninstall-header-router-msk:
+	helm uninstall header-router-msk -n header-router-msk --ignore-not-found
 
 smoke-producer-help:
 	@echo "Producer (interactive paste JSON), same namespace as Kafka:"

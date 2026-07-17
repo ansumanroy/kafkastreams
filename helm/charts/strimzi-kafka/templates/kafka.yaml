@@ -1,0 +1,49 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: {{ .Values.nodePoolName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    strimzi.io/cluster: {{ .Values.clusterName }}
+    {{- include "strimzi-kafka.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.kafka.replicas }}
+  roles:
+    - controller
+    - broker
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: {{ .Values.kafka.storage.type }}
+        kraftMetadata: shared
+  jvmOptions:
+    {{- toYaml .Values.kafka.jvmOptions | nindent 4 }}
+  resources:
+    {{- toYaml .Values.kafka.resources | nindent 4 }}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: {{ .Values.clusterName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "strimzi-kafka.labels" . | nindent 4 }}
+spec:
+  kafka:
+    version: {{ .Values.kafka.version | quote }}
+    metadataVersion: {{ .Values.kafka.metadataVersion | quote }}
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      {{- toYaml .Values.kafka.config | nindent 6 }}
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
