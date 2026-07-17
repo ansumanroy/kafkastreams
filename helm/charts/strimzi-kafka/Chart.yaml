@@ -1,0 +1,6 @@
+apiVersion: v2
+name: strimzi-kafka
+description: Strimzi Kafka cluster (KRaft) and KafkaTopic resources for Kind
+type: application
+version: 0.1.0
+appVersion: "4.1.0"

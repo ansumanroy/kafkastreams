@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ingest-router
+description: Kafka Streams ingest router (JSON body field routing)
+type: application
+version: 0.1.0
+appVersion: "1.0.0-SNAPSHOT"

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "header-router.configMapName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "header-router.labels" . | nindent 4 }}
+data:
+  config.json: |
+    {{- .Values.routerConfig | toPrettyJson | nindent 4 }}

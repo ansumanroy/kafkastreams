@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "header-router.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "header-router.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "header-router.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "header-router.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ include "header-router.name" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            {{- if .Values.kafka.auth.enabled }}
+            - name: BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.kafka.auth.bootstrapConfigMapName }}
+                  key: BOOTSTRAP_SERVERS
+            {{- else }}
+            - name: BOOTSTRAP_SERVERS
+              value: {{ .Values.bootstrapServers | quote }}
+            {{- end }}
+            - name: APPLICATION_ID
+              value: {{ .Values.applicationId | quote }}
+            - name: ROUTER_CONFIG_PATH
+              value: {{ .Values.routerConfigPath | quote }}
+            {{- if .Values.kafka.auth.enabled }}
+            - name: KAFKA_SECURITY_PROTOCOL
+              value: {{ .Values.kafka.auth.securityProtocol | quote }}
+            - name: KAFKA_SASL_MECHANISM
+              value: {{ .Values.kafka.auth.saslMechanism | quote }}
+            - name: KAFKA_SASL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.kafka.auth.secretName }}
+                  key: username
+            - name: KAFKA_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.kafka.auth.secretName }}
+                  key: password
+            {{- end }}
+          volumeMounts:
+            - name: router-config
+              mountPath: {{ .Values.routerConfigPath }}
+              subPath: config.json
+              readOnly: true
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: router-config
+          configMap:
+            name: {{ include "header-router.configMapName" . }}

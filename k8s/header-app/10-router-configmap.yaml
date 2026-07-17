@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: header-router-config
+  namespace: header-router
+  labels:
+    app: header-router
+data:
+  config.json: |
+    {
+      "ingestTopic": "Ingest",
+      "dlqTopic": "Ingest-dlq",
+      "targetHeader": "target",
+      "routes": {
+        "ACDW": "ACDW",
+        "MULESOFT": "MULESOFT",
+        "GDW": "GDW",
+        "SIEBEL": "SIEBEL"
+      }
+    }

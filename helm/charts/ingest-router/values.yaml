@@ -1,0 +1,42 @@
+# Default: Kind + in-cluster Strimzi (plaintext).
+nameOverride: ""
+fullnameNameOverride: ""
+
+replicaCount: 1
+
+image:
+  repository: ingest-router
+  tag: local
+  pullPolicy: IfNotPresent
+
+applicationId: ingest-router
+bootstrapServers: kind-kafka-kafka-bootstrap.kafka.svc.cluster.local:9092
+routerConfigPath: /etc/router/config.json
+
+routerConfig:
+  ingestTopic: Ingest
+  dlqTopic: Ingest-dlq
+  targetField: target
+  routes:
+    ACDW: ACDW
+    MULESOFT: MULESOFT
+    GDW: GDW
+    SIEBEL: SIEBEL
+
+resources:
+  requests:
+    memory: 512Mi
+    cpu: "250m"
+  limits:
+    memory: 1Gi
+    cpu: "1"
+
+kafka:
+  auth:
+    enabled: false
+    securityProtocol: SASL_SSL
+    saslMechanism: SCRAM-SHA-512
+    username: "<replace-with-msk-scram-username>"
+    password: "<replace-with-msk-scram-password>"
+    bootstrapConfigMapName: msk-bootstrap
+    secretName: msk-scram-credentials

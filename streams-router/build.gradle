@@ -1,0 +1,48 @@
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'com.example'
+version = '1.0.0-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    kafkaVersion = '4.1.0'
+}
+
+dependencies {
+    implementation "org.apache.kafka:kafka-streams:${kafkaVersion}"
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+    implementation 'org.slf4j:slf4j-api:2.0.16'
+    implementation 'ch.qos.logback:logback-classic:1.5.15'
+}
+
+tasks.named('jar') {
+    manifest {
+        attributes('Main-Class': 'com.example.ingestrouter.IngestRouterApp')
+    }
+}
+
+shadowJar {
+    archiveBaseName.set('ingest-router')
+    archiveClassifier.set('')
+    archiveVersion.set(version)
+    mergeServiceFiles()
+    manifest {
+        attributes('Main-Class': 'com.example.ingestrouter.IngestRouterApp')
+    }
+}
+
+tasks.named('build') {
+    dependsOn tasks.named('shadowJar')
+}

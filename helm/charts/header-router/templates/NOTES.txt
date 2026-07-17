@@ -1,0 +1,6 @@
+1. Header router deployed in namespace {{ .Release.Namespace }}.
+2. APPLICATION_ID={{ .Values.applicationId }}
+3. Auth enabled: {{ .Values.kafka.auth.enabled }}
+{{- if not .Values.kafka.auth.enabled }}
+4. Bootstrap: {{ .Values.bootstrapServers }}
+{{- end }}
