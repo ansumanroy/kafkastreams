@@ -11,7 +11,9 @@ GRADLE            ?= gradle
 
 HELM_CHARTS_DIR := helm/charts
 
-.PHONY: build build-maven build-gradle docker-build \
+.DEFAULT_GOAL := help
+
+.PHONY: help build build-maven build-gradle docker-build \
 	build-header build-header-maven build-header-gradle docker-build-header \
 	strimzi-install kafka-apply kafka-wait kind-load kind-load-ctr \
 	app-apply app-wait deploy-router \
@@ -24,6 +26,51 @@ HELM_CHARTS_DIR := helm/charts
 	helm-install-header-router helm-uninstall-header-router \
 	helm-install-header-router-msk helm-uninstall-header-router-msk \
 	smoke-producer-help smoke-header-help
+
+# Default: list phony targets (make with no arguments).
+help:
+	@echo "Usage: make <target>"
+	@echo ""
+	@echo "Phony targets:"
+	@echo "  help                          Show this help (default)"
+	@echo ""
+	@echo "  Build"
+	@echo "    build                       Maven package streams-router (default Java build)"
+	@echo "    build-maven                 Maven package streams-router"
+	@echo "    build-gradle                Gradle build streams-router"
+	@echo "    docker-build                Build ingest-router image (\$$IMAGE)"
+	@echo "    build-header                Maven package streams-header-router"
+	@echo "    build-header-maven          Maven package streams-header-router"
+	@echo "    build-header-gradle         Gradle build streams-header-router"
+	@echo "    docker-build-header         Build header-router image (\$$HEADER_IMAGE)"
+	@echo ""
+	@echo "  Kafka / Kind"
+	@echo "    strimzi-install             Install Strimzi operator"
+	@echo "    kafka-apply                 Apply Kafka + topics (kubectl)"
+	@echo "    kafka-wait                  Wait for Kafka Ready"
+	@echo "    kind-load                   Load \$$IMAGE into Kind"
+	@echo "    kind-load-ctr               Fallback image load via ctr"
+	@echo ""
+	@echo "  Deploy (kubectl)"
+	@echo "    deploy-router               Build/load/apply ingest-router"
+	@echo "    deploy-router-msk           Build/load/apply ingest-router MSK"
+	@echo "    deploy-header-router        Build/load/apply header-router"
+	@echo "    deploy-header-router-msk    Build/load/apply header-router MSK"
+	@echo "    app-apply / app-wait        ingest-router Kind manifests"
+	@echo "    msk-app-apply / msk-app-wait"
+	@echo "    header-app-apply / header-app-wait"
+	@echo "    header-msk-app-apply / header-msk-app-wait"
+	@echo ""
+	@echo "  Helm"
+	@echo "    helm-install-kafka / helm-uninstall-kafka"
+	@echo "    helm-install-router / helm-uninstall-router"
+	@echo "    helm-install-router-msk / helm-uninstall-router-msk"
+	@echo "    helm-install-header-router / helm-uninstall-header-router"
+	@echo "    helm-install-header-router-msk / helm-uninstall-header-router-msk"
+	@echo ""
+	@echo "  Smoke"
+	@echo "    smoke-producer-help         Print ingest-router smoke commands"
+	@echo "    smoke-header-help           Print header-router smoke commands"
 
 # Default local Java build uses Maven (matches the Dockerfile).
 build: build-maven
