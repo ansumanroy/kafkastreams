@@ -153,7 +153,11 @@ Upgrading Kind or Docker Desktop may restore native `kind load`; the pipe fallba
 ## Layout
 
 - [`k8s/strimzi/`](k8s/strimzi/) — namespace, KRaft `Kafka` + `KafkaNodePool`, `KafkaTopic` resources
-- [`streams-router/`](streams-router/) — Java 17 Maven app
-- [`Dockerfile`](Dockerfile) — multi-stage build for the router
+- [`streams-router/`](streams-router/) — Java 17 Maven app (JSON body field routing)
+- [`streams-header-router/`](streams-header-router/) — Java 17 app that routes by Kafka record header; see its [README](streams-header-router/README.md) for design and gotchas
+- [`Dockerfile`](Dockerfile) — multi-stage build for the ingest router
+- [`Dockerfile.header-router`](Dockerfile.header-router) — multi-stage build for the header router
 - [`k8s/app/`](k8s/app/) — local Strimzi router `Deployment`, ConfigMap, sample [`router-config.json`](k8s/app/router-config.json)
 - [`k8s/msk-app/`](k8s/msk-app/) — separate MSK router `Deployment` with SASL/SCRAM env wiring
+- [`k8s/header-app/`](k8s/header-app/) — local Strimzi header-router `Deployment` and ConfigMap
+- [`k8s/header-msk-app/`](k8s/header-msk-app/) — MSK header-router `Deployment` with SASL/SCRAM env wiring

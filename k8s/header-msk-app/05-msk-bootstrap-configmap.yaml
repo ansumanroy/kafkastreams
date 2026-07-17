@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: msk-bootstrap
+  namespace: header-router-msk
+  labels:
+    app: header-router
+data:
+  BOOTSTRAP_SERVERS: "b-1.example.abcd.kafka.us-east-1.amazonaws.com:9096,b-2.example.abcd.kafka.us-east-1.amazonaws.com:9096"

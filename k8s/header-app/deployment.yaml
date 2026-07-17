@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: header-router
+  namespace: header-router
+  labels:
+    app: header-router
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: header-router
+  template:
+    metadata:
+      labels:
+        app: header-router
+    spec:
+      containers:
+        - name: header-router
+          image: header-router:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: BOOTSTRAP_SERVERS
+              value: kind-kafka-kafka-bootstrap.kafka.svc.cluster.local:9092
+            - name: APPLICATION_ID
+              value: header-router
+            - name: ROUTER_CONFIG_PATH
+              value: /etc/router/config.json
+          volumeMounts:
+            - name: router-config
+              mountPath: /etc/router/config.json
+              subPath: config.json
+              readOnly: true
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: "250m"
+            limits:
+              memory: 1Gi
+              cpu: "1"
+      volumes:
+        - name: router-config
+          configMap:
+            name: header-router-config
