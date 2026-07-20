@@ -235,7 +235,7 @@ smoke-header-help:
 	@echo ""
 	@echo "Domain events (route on domainType; see k8s/header-app/router-config-domain.json):"
 	@echo "  make generate-domain-payload DOMAIN_TYPE=user-role PRINT_KCAT=1"
-	@echo '  # or: python3 scripts/generate-domain-payload.py --domain-type user-role --print-kcat'
+	@echo "  make generate-domain-payload DOMAIN_TYPE=user-role PRODUCE_IN_CLUSTER=1"
 	@echo '  echo '"'"'<payload>'"'"' | kcat -b localhost:9092 -t Ingest -P \\'
 	@echo '    -H correlationId=<uuid> -H transactionId=<uuid> \\'
 	@echo '    -H domainType=user-role -H sourceSystem=SF_PRV2_2'
@@ -251,6 +251,6 @@ smoke-header-help:
 	@echo "unless you intentionally want competing consumers."
 
 # Random domain-event payloads for header-router (domainType routing).
-# Optional: DOMAIN_TYPE=user-role COUNT=3 PRINT_KCAT=1 PRODUCE=1 BOOTSTRAP=localhost:9092
+# Optional: DOMAIN_TYPE=user-role COUNT=3 PRINT_KCAT=1 PRODUCE=1 PRODUCE_IN_CLUSTER=1
 generate-domain-payload:
-	python3 scripts/generate-domain-payload.py $(if $(DOMAIN_TYPE),--domain-type $(DOMAIN_TYPE)) $(if $(COUNT),--count $(COUNT)) $(if $(BOOTSTRAP),--bootstrap $(BOOTSTRAP)) $(if $(filter 1 true yes,$(PRINT_KCAT)),--print-kcat) $(if $(filter 1 true yes,$(PRODUCE)),--produce)
+	python3 scripts/generate-domain-payload.py $(if $(DOMAIN_TYPE),--domain-type $(DOMAIN_TYPE)) $(if $(COUNT),--count $(COUNT)) $(if $(BOOTSTRAP),--bootstrap $(BOOTSTRAP)) $(if $(filter 1 true yes,$(PRINT_KCAT)),--print-kcat) $(if $(filter 1 true yes,$(PRODUCE)),--produce) $(if $(filter 1 true yes,$(PRODUCE_IN_CLUSTER)),--produce-in-cluster)

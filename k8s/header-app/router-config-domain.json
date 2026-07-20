@@ -1,0 +1,12 @@
+{
+  "ingestTopic": "Ingest",
+  "dlqTopic": "Ingest-dlq",
+  "targetHeader": "domainType",
+  "routes": {
+    "programpayment-entity": "GDW",
+    "associated-provider": "ACDW",
+    "service-delivery": "MULESOFT",
+    "associated-person": "SIEBEL",
+    "user-role": "ACDW"
+  }
+}

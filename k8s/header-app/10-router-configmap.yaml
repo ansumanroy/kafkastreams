@@ -10,11 +10,12 @@ data:
     {
       "ingestTopic": "Ingest",
       "dlqTopic": "Ingest-dlq",
-      "targetHeader": "target",
+      "targetHeader": "domainType",
       "routes": {
-        "ACDW": "ACDW",
-        "MULESOFT": "MULESOFT",
-        "GDW": "GDW",
-        "SIEBEL": "SIEBEL"
+        "programpayment-entity": "GDW",
+        "associated-provider": "ACDW",
+        "service-delivery": "MULESOFT",
+        "associated-person": "SIEBEL",
+        "user-role": "ACDW"
       }
     }
