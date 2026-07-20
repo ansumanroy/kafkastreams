@@ -79,6 +79,115 @@ make smoke-producer-help
 
 **Consumer** on `ACDW` should show the same line. Send `not-json` to **`Ingest`** and read **`Ingest-dlq`** to verify the dead-letter path.
 
+### Header router (record header routing)
+
+Print copy-paste commands:
+
+```bash
+make smoke-header-help
+```
+
+The route key is a **Kafka record header** (default name `target`), not a JSON field. Body stays opaque — any bytes work.
+
+**Payload** (example JSON body; routing uses the header only):
+
+```json
+{"eventId":"evt-1","eventType":"PROVIDER_UPSERT"}
+```
+
+**Producer** (requires `kcat` / `kafkacat` to set headers; host must reach Kafka bootstrap, e.g. via port-forward):
+
+```bash
+echo '{"eventId":"evt-1","eventType":"PROVIDER_UPSERT"}' | kcat -b localhost:9092 -t Ingest -P -H target=ACDW
+```
+
+**Consumer** on `ACDW` should show the same JSON line. Omit the header or send an unknown value and read **`Ingest-dlq`**.
+
+Do not run ingest-router and header-router against the same **`Ingest`** topic at once unless you intentionally want both consumer groups to process every record.
+
+#### Domain events (`domainType` routing)
+
+For EventXchange-style payloads, set the routing header to **`domainType`** (not `target`). Extra headers (`correlationId`, `transactionId`, `sourceSystem`) are ignored for routing but forwarded with the record.
+
+Generate random payloads:
+
+```bash
+make generate-domain-payload DOMAIN_TYPE=user-role PRINT_KCAT=1
+# or: python3 scripts/generate-domain-payload.py --domain-type user-role --print-kcat
+```
+
+Allowed `domainType` values: `programpayment-entity`, `associated-provider`, `service-delivery`, `associated-person`, `user-role`.
+
+**Headers example:**
+
+```text
+correlationId:fce60900-7f19-11f1-b484-0685e12e0df9
+transactionId:9dc02aa3-ca18-46a0-b836-8bfdd1c157dc
+domainType:user-role
+sourceSystem:SF_PRV2_2
+```
+
+**Payload sample** (`domain_key` and IDs match the headers):
+
+```json
+{
+  "_meta": {
+    "transaction_metadata": {
+      "transaction_id": "9dc02aa3-ca18-46a0-b836-8bfdd1c157dc",
+      "timestamp": "2026-07-14T00:21:43.589Z",
+      "sub_domain_record_id": null,
+      "sub_domain_key": null,
+      "source_system": "EVENTXCHANGE",
+      "source_entity_id": "07k9200000WiQR1AAN",
+      "last_modified_date_time": null,
+      "domain_record_id": "07k9200000WiQR1AAN",
+      "domain_key": "user-role",
+      "created_date_time": null,
+      "correlation_id": "fce60900-7f19-11f1-b484-0685e12e0df9"
+    }
+  },
+  "data": {
+    "IsActive": true,
+    "ACRId": "07k9200000WiQR1AAN",
+    "AccountId": "0019200001ATihBAAT",
+    "ContactId": "003920000189ajvAAA",
+    "Roles": "Provider Staff (Registered Provider)",
+    "StartDate": "2026-07-14",
+    "EndDate": null,
+    "LastModifiedDate": "2026-07-14T00:21:39.000Z"
+  }
+}
+```
+
+**Producer:**
+
+```bash
+echo '<payload-json>' | kcat -b localhost:9092 -t Ingest -P \
+  -H correlationId=fce60900-7f19-11f1-b484-0685e12e0df9 \
+  -H transactionId=9dc02aa3-ca18-46a0-b836-8bfdd1c157dc \
+  -H domainType=user-role \
+  -H sourceSystem=SF_PRV2_2
+```
+
+**Header-router config** for this contract ([`k8s/header-app/router-config-domain.json`](k8s/header-app/router-config-domain.json)) — edit the `routes` map to match your destination systems:
+
+```json
+{
+  "ingestTopic": "Ingest",
+  "dlqTopic": "Ingest-dlq",
+  "targetHeader": "domainType",
+  "routes": {
+    "programpayment-entity": "GDW",
+    "associated-provider": "ACDW",
+    "service-delivery": "MULESOFT",
+    "associated-person": "SIEBEL",
+    "user-role": "ACDW"
+  }
+}
+```
+
+To apply: copy those fields into [`k8s/header-app/10-router-configmap.yaml`](k8s/header-app/10-router-configmap.yaml) (or Helm `routerConfig`), then restart the Deployment. Missing or unknown `domainType` → **`Ingest-dlq`**.
+
 ## Configuration
 
 ### Router JSON ([`k8s/app/router-config.json`](k8s/app/router-config.json))
@@ -159,6 +268,7 @@ Upgrading Kind or Docker Desktop may restore native `kind load`; the pipe fallba
 - [`Dockerfile.header-router`](Dockerfile.header-router) — multi-stage build for the header router
 - [`k8s/app/`](k8s/app/) — local Strimzi router `Deployment`, ConfigMap, sample [`router-config.json`](k8s/app/router-config.json)
 - [`k8s/msk-app/`](k8s/msk-app/) — separate MSK router `Deployment` with SASL/SCRAM env wiring
-- [`k8s/header-app/`](k8s/header-app/) — local Strimzi header-router `Deployment` and ConfigMap
+- [`k8s/header-app/`](k8s/header-app/) — local Strimzi header-router `Deployment` and ConfigMap; domain routing sample [`router-config-domain.json`](k8s/header-app/router-config-domain.json)
+- [`scripts/generate-domain-payload.py`](scripts/generate-domain-payload.py) — random domain-event payloads for header-router smoke tests
 - [`k8s/header-msk-app/`](k8s/header-msk-app/) — MSK header-router `Deployment` with SASL/SCRAM env wiring
 - [`helm/charts/`](helm/charts/) — Helm charts for Strimzi Kafka, ingest-router, and header-router (see [`helm/README.md`](helm/README.md))

@@ -13,6 +13,10 @@ applicationId: header-router
 bootstrapServers: kind-kafka-kafka-bootstrap.kafka.svc.cluster.local:9092
 routerConfigPath: /etc/router/config.json
 
+# Demo routes on header "target". For domain events, set targetHeader to
+# domainType and map programpayment-entity / associated-provider /
+# service-delivery / associated-person / user-role → ACDW|MULESOFT|GDW|SIEBEL
+# (see k8s/header-app/router-config-domain.json).
 routerConfig:
   ingestTopic: Ingest
   dlqTopic: Ingest-dlq

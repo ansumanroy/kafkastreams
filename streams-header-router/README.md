@@ -40,6 +40,36 @@ Resolver rules:
 3. Lookup in `routes`; if missing / blank / bad UTF-8 / unknown key → **`dlqTopic`**.
 4. `TopicNameExtractor` **never returns null** — always a real topic name.
 
+### Domain events (`domainType`)
+
+For EventXchange-style messages, set `targetHeader` to **`domainType`**. Other headers (`correlationId`, `transactionId`, `sourceSystem`) are not used for routing but are preserved on the outbound record.
+
+Example config ([`../k8s/header-app/router-config-domain.json`](../k8s/header-app/router-config-domain.json)) — edit `routes` to match your systems:
+
+```json
+{
+  "ingestTopic": "Ingest",
+  "dlqTopic": "Ingest-dlq",
+  "targetHeader": "domainType",
+  "routes": {
+    "programpayment-entity": "GDW",
+    "associated-provider": "ACDW",
+    "service-delivery": "MULESOFT",
+    "associated-person": "SIEBEL",
+    "user-role": "ACDW"
+  }
+}
+```
+
+| Header | Purpose |
+|--------|---------|
+| `domainType` | Routing key (must be in `routes`) |
+| `correlationId` | Tracing (ignored for routing) |
+| `transactionId` | Tracing (ignored for routing) |
+| `sourceSystem` | Metadata (ignored for routing) |
+
+Allowed `domainType` values in the sample generator: `programpayment-entity`, `associated-provider`, `service-delivery`, `associated-person`, `user-role`.
+
 ## Topology
 
 Single consume → dynamic sink (no `split` / `branch`):
@@ -98,10 +128,33 @@ echo '{"eventId":"evt-1"}' | kcat -b localhost:9092 -t Ingest -P -H target=ACDW
 
 Missing header → `Ingest-dlq`.
 
+### Domain event payloads
+
+Generate random payloads (IDs in headers match `_meta.transaction_metadata`):
+
+```bash
+make generate-domain-payload DOMAIN_TYPE=user-role PRINT_KCAT=1
+# or: python3 scripts/generate-domain-payload.py --domain-type user-role --print-kcat --count 5
+```
+
+Example produce with all four headers:
+
+```bash
+echo '<payload-json>' | kcat -b localhost:9092 -t Ingest -P \
+  -H correlationId=fce60900-7f19-11f1-b484-0685e12e0df9 \
+  -H transactionId=9dc02aa3-ca18-46a0-b836-8bfdd1c157dc \
+  -H domainType=user-role \
+  -H sourceSystem=SF_PRV2_2
+```
+
+With `router-config-domain.json` applied, `domainType=user-role` routes to **`ACDW`** (per the sample map — edit before production use).
+
 ## Layout
 
 - Java sources under `src/main/java/com/example/headerrouter/`
 - Local Kind manifests: [`../k8s/header-app/`](../k8s/header-app/)
+- Domain routing example: [`../k8s/header-app/router-config-domain.json`](../k8s/header-app/router-config-domain.json)
+- Payload generator: [`../scripts/generate-domain-payload.py`](../scripts/generate-domain-payload.py)
 - MSK manifests: [`../k8s/header-msk-app/`](../k8s/header-msk-app/)
 - Image build: [`../Dockerfile.header-router`](../Dockerfile.header-router)
 

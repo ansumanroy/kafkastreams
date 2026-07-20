@@ -25,7 +25,7 @@ HELM_CHARTS_DIR := helm/charts
 	helm-install-router-msk helm-uninstall-router-msk \
 	helm-install-header-router helm-uninstall-header-router \
 	helm-install-header-router-msk helm-uninstall-header-router-msk \
-	smoke-producer-help smoke-header-help
+	smoke-producer-help smoke-header-help generate-domain-payload
 
 # Default: list phony targets (make with no arguments).
 help:
@@ -71,6 +71,7 @@ help:
 	@echo "  Smoke"
 	@echo "    smoke-producer-help         Print ingest-router smoke commands"
 	@echo "    smoke-header-help           Print header-router smoke commands"
+	@echo "    generate-domain-payload     Random domain-event JSON (+ optional kcat)"
 
 # Default local Java build uses Maven (matches the Dockerfile).
 build: build-maven
@@ -231,6 +232,13 @@ smoke-header-help:
 	@echo "Header router needs a producer that can set record headers (kcat/kafkacat)."
 	@echo "Example (from a host that can reach the Kind Kafka bootstrap, or via port-forward):"
 	@echo '  echo '"'"'{"eventId":"evt-1","eventType":"PROVIDER_UPSERT"}'"'"' | kcat -b localhost:9092 -t Ingest -P -H target=ACDW'
+	@echo ""
+	@echo "Domain events (route on domainType; see k8s/header-app/router-config-domain.json):"
+	@echo "  make generate-domain-payload DOMAIN_TYPE=user-role PRINT_KCAT=1"
+	@echo '  # or: python3 scripts/generate-domain-payload.py --domain-type user-role --print-kcat'
+	@echo '  echo '"'"'<payload>'"'"' | kcat -b localhost:9092 -t Ingest -P \\'
+	@echo '    -H correlationId=<uuid> -H transactionId=<uuid> \\'
+	@echo '    -H domainType=user-role -H sourceSystem=SF_PRV2_2'
 	@echo "Missing/unknown header goes to DLQ:"
 	@echo '  echo '"'"'opaque-payload'"'"' | kcat -b localhost:9092 -t Ingest -P'
 	@echo "Consumer ACDW:"
@@ -241,3 +249,8 @@ smoke-header-help:
 	@echo '    bin/kafka-console-consumer.sh --bootstrap-server kind-kafka-kafka-bootstrap:9092 --topic Ingest-dlq --from-beginning'
 	@echo "Note: do not run ingest-router and header-router against the same Ingest topic at once"
 	@echo "unless you intentionally want competing consumers."
+
+# Random domain-event payloads for header-router (domainType routing).
+# Optional: DOMAIN_TYPE=user-role COUNT=3 PRINT_KCAT=1 PRODUCE=1 BOOTSTRAP=localhost:9092
+generate-domain-payload:
+	python3 scripts/generate-domain-payload.py $(if $(DOMAIN_TYPE),--domain-type $(DOMAIN_TYPE)) $(if $(COUNT),--count $(COUNT)) $(if $(BOOTSTRAP),--bootstrap $(BOOTSTRAP)) $(if $(filter 1 true yes,$(PRINT_KCAT)),--print-kcat) $(if $(filter 1 true yes,$(PRODUCE)),--produce)
